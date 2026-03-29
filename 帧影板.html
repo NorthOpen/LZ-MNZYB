@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帧影板</title>
+<link href="https://fontsapi.zeoseven.com/788/main/result.css" onload="this.rel='stylesheet'" rel="preload" as="style" crossorigin />
+<noscript><link rel="stylesheet" href="https://fontsapi.zeoseven.com/788/main/result.css" /></noscript>
+<style>
+  /* ═══ 基础重置 ═══ */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --neon: #39ff14;
+    --neon-dim: #39ff1488;
+    --neon-glow: #39ff1444;
+    --neon-dark: #0a3d00;
+    --bg-deep: #0a0a0f;
+    --bg-panel: #0d0d14;
+    --bg-card: #111118;
+    --bg-input: #0c0c12;
+    --border: #39ff1433;
+    --border-hover: #39ff1488;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --font-main: "FashionBitmap16", sans-serif;
+    --grid-gap: 16px;
+    --radius: 4px;
+  }
+
+  html { font-size: 14px; }
+
+  body {
+    font-family: var(--font-main);
+    font-weight: normal;
+    background: var(--bg-deep);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* ═══ 扫描线 + 噪点背景 ═══ */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(57, 255, 20, 0.015) 2px,
+      rgba(57, 255, 20, 0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  /* ═══ 顶部标题栏 ═══ */
+  .header {
+    width: 100%;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #0d0d14 0%, var(--bg-deep) 100%);
+    position: relative;
+  }
+
+  .header::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-dim), transparent);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo-main {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--neon);
+    text-shadow: 0 0 10px var(--neon-dim), 0 0 30px var(--neon-glow);
+    letter-spacing: 4px;
+  }
+
+  .logo-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .header-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+    padding-bottom: 2px;
+  }
+
+  .header-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 1px;
+    background: var(--neon);
+    box-shadow: 0 0 4px var(--neon-dim);
+    transition: width 0.3s ease;
+  }
+
+  .header-link:hover {
+    color: var(--neon);
+  }
+
+  .header-link:hover::after {
+    width: 100%;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ═══ 主内容区域 - 两栏布局 ═══ */
+  .main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 1fr;
+    gap: 0;
+    padding: 0;
+    min-height: 0;
+  }
+
+  /* ═══ 左侧面板 - 处理步骤 + 参数 ═══ */
+  .panel-left {
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--neon);
+    letter-spacing: 3px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::before {
+    content: "";
+    width: 3px;
+    height: 14px;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon-dim);
+  }
+
+  .steps-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .steps-container::-webkit-scrollbar { width: 4px; }
+  .steps-container::-webkit-scrollbar-track { background: transparent; }
+  .steps-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .step-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--neon-dim);
+    transition: background 0.2s;
+  }
+
+  .step-card:hover {
+    border-color: var(--border-hover);
+    background: #141420;
+  }
+
+  .step-card:hover::before {
+    background: var(--neon);
+    box-shadow: 0 0 8px var(--neon-dim);
+  }
+
+  .step-card.active {
+    border-color: var(--neon-dim);
+    background: #141420;
+  }
+
+  .step-card.active::before {
+    background: var(--neon);
+    box-shadow: 0 0 8px var(--neon-dim);
+  }
+
+  .step-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+  }
+
+  .step-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .step-num {
+    font-size: 0.65rem;
+    color: var(--neon);
+    font-weight: 700;
+    background: var(--neon-dark);
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .step-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .step-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-expand {
+    width: 20px; height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    transition: transform 0.25s ease;
+    cursor: pointer;
+  }
+
+  .step-card.expanded .step-expand {
+    transform: rotate(180deg);
+  }
+
+  .step-toggle {
+    position: relative;
+    width: 32px; height: 16px;
+    background: #1a1a24;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .step-toggle.on {
+    background: var(--neon-dark);
+    border-color: var(--neon-dim);
+  }
+
+  .step-toggle::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    transition: all 0.2s;
+  }
+
+  .step-toggle.on::after {
+    left: 18px;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon-dim);
+  }
+
+  /* ═══ 步骤内联参数面板 ═══ */
+  .step-params-inline {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 16px;
+    border-top: 0px solid var(--border);
+  }
+
+  .step-card.expanded .step-params-inline {
+    max-height: 500px;
+    padding: 12px 16px 14px;
+    border-top-width: 1px;
+  }
+
+  /* ═══ 参数通用 ═══ */
+  .param-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .param-row:last-child { margin-bottom: 0; }
+
+  .param-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .param-value {
+    font-size: 0.75rem;
+    color: var(--neon);
+    font-weight: 600;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .param-slider {
+    width: 100%;
+    margin-top: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #1a1a24;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .param-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--neon);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--neon-dim);
+    border: 2px solid var(--bg-deep);
+  }
+
+  .param-slider::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--neon);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--neon-dim);
+    border: 2px solid var(--bg-deep);
+  }
+
+  /* ═══ 中央画布区域 ═══ */
+  .canvas-area {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-deep);
+    position: relative;
+  }
+
+  .canvas-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toolbar-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    font-family: var(--font-main);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+
+  .toolbar-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--neon);
+  }
+
+  .toolbar-btn.primary {
+    background: var(--neon-dark);
+    border-color: var(--neon-dim);
+    color: var(--neon);
+  }
+
+  .toolbar-btn.primary:hover {
+    background: #0d5200;
+    box-shadow: 0 0 12px var(--neon-glow);
+  }
+
+  .zoom-info {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .canvas-viewport {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+  }
+
+  /* 网格背景 */
+  .canvas-viewport::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+  }
+
+  .upload-zone {
+    width: 480px;
+    height: 360px;
+    border: 2px dashed var(--neon-dim);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    background: rgba(10, 61, 0, 0.05);
+  }
+
+  .upload-zone:hover {
+    border-color: var(--neon);
+    background: rgba(57, 255, 20, 0.03);
+    box-shadow: 0 0 40px var(--neon-glow);
+  }
+
+  .upload-icon {
+    width: 56px; height: 56px;
+    border: 2px solid var(--neon-dim);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .upload-icon::before {
+    content: "";
+    width: 2px; height: 22px;
+    background: var(--neon-dim);
+    position: absolute;
+  }
+
+  .upload-icon::after {
+    content: "";
+    width: 22px; height: 2px;
+    background: var(--neon-dim);
+    position: absolute;
+  }
+
+  .upload-text {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .upload-hint {
+    font-size: 0.7rem;
+    color: #555;
+    letter-spacing: 1px;
+  }
+
+  .preview-container {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: auto;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .canvas-wrapper {
+    display: block;
+    transform-origin: 0 0;
+    transition: transform 0.15s ease;
+    margin: auto;
+    flex-shrink: 0;
+  }
+
+  .preview-container canvas {
+    border: 1px solid var(--border);
+    display: block;
+  }
+
+  /* 底部状态栏 */
+  .canvas-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* ═══ 底部操作栏 ═══ */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+
+  .footer-info {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .footer-link {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+    padding-bottom: 2px;
+  }
+
+  .footer-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    height: 1px;
+    background: var(--neon);
+    box-shadow: 0 0 4px var(--neon-dim);
+    transition: width 0.3s ease;
+  }
+
+  .footer-link:hover {
+    color: var(--neon);
+  }
+
+  .footer-link:hover::after {
+    width: 100%;
+  }
+
+  .footer-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    font-family: var(--font-main);
+    font-weight: 600;
+    letter-spacing: 2px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+  }
+
+  .btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--neon-dark), #0d5200);
+    border-color: var(--neon-dim);
+    color: var(--neon);
+    text-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 20px var(--neon-glow), inset 0 0 20px var(--neon-glow);
+  }
+
+  /* ═══ 隐藏的文件输入 ═══ */
+  #fileInput { display: none; }
+
+  /* ═══ 滚动条全局 ═══ */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ═══ 色板相关 ═══ */
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .palette-swatch {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .palette-swatch:hover {
+    border-color: var(--neon);
+    box-shadow: 0 0 8px var(--neon-glow);
+    transform: scale(1.15);
+    z-index: 1;
+  }
+
+  .palette-swatch input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+
+  /* ═══ 马赛克选项 ═══ */
+  .mosaic-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .mosaic-btn {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 0;
+    font-size: 0.7rem;
+    font-family: var(--font-main);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .mosaic-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--neon);
+  }
+
+  .mosaic-btn.active {
+    background: var(--neon-dark);
+    border-color: var(--neon-dim);
+    color: var(--neon);
+    box-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  /* ═══ 输入框通用 ═══ */
+  .export-input {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--neon);
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    font-family: var(--font-main);
+    border-radius: var(--radius);
+    outline: none;
+    transition: all 0.2s;
+    width: 160px;
+  }
+
+  .export-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .export-input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  /* ═══ 角标装饰 ═══ */
+  .corner-decor {
+    position: absolute;
+    width: 12px; height: 12px;
+    border-color: var(--neon-dim);
+    border-style: solid;
+    border-width: 0;
+    pointer-events: none;
+  }
+  .corner-decor.tl { top: 8px; left: 8px; border-top-width: 1px; border-left-width: 1px; }
+  .corner-decor.tr { top: 8px; right: 8px; border-top-width: 1px; border-right-width: 1px; }
+  .corner-decor.bl { bottom: 8px; left: 8px; border-bottom-width: 1px; border-left-width: 1px; }
+  .corner-decor.br { bottom: 8px; right: 8px; border-bottom-width: 1px; border-right-width: 1px; }
+</style>
+</head>
+<body>
+
+  <!-- 顶部标题栏 -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-main">帧影板</span>
+      <span class="logo-sub">「一 目 千 色」</span>
+    </div>
+    <div class="header-status">
+      <span class="status-dot"></span>
+      <a class="header-link" href="https://github.com/NorthOpen/LZ-MNZYB" target="_blank" rel="noopener noreferrer">KkkkitaA with Claude Code</a>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="main">
+
+    <!-- 左侧 - 处理步骤 + 内联参数 -->
+    <aside class="panel-left">
+      <div class="panel-title">处理流程</div>
+      <div class="steps-container" id="stepsContainer">
+
+        <!-- 步骤 〇壹 -->
+        <div class="step-card expanded" data-step="1">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇壹</span>
+              <span class="step-name">光学瑕疵</span>
+            </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <span class="param-label">桶型畸变</span>
+              <span class="param-value" id="distortVal">40%</span>
+            </div>
+            <input type="range" class="param-slider" id="distortSlider" min="0" max="100" value="40"
+              oninput="document.getElementById('distortVal').textContent = this.value + '%'; scheduleProcess()">
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">暗角强度</span>
+              <span class="param-value" id="vignetteVal">40%</span>
+            </div>
+            <input type="range" class="param-slider" id="vignetteSlider" min="0" max="100" value="40"
+              oninput="document.getElementById('vignetteVal').textContent = this.value + '%'; scheduleProcess()">
+          </div>
+        </div>
+
+        <!-- 步骤 〇贰 -->
+        <div class="step-card" data-step="2">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇贰</span>
+              <span class="step-name">对比调整</span>
+            </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <span class="param-label">对比度</span>
+              <span class="param-value" id="contrastVal">5%</span>
+            </div>
+            <input type="range" class="param-slider" id="contrastSlider" min="0" max="20" value="5"
+              oninput="document.getElementById('contrastVal').textContent = this.value + '%'; scheduleProcess()">
+          </div>
+        </div>
+
+        <!-- 步骤 〇叁 -->
+        <div class="step-card" data-step="3">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇叁</span>
+              <span class="step-name">阈值色阶</span>
+            </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <span class="param-label">数值设置（固定）</span>
+              <span class="param-value">14</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 步骤 〇肆 -->
+        <div class="step-card" data-step="4">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇肆</span>
+              <span class="step-name">色域缩限</span>
+            </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <span class="param-label">九色色板</span>
+            </div>
+            <div class="palette-grid" id="paletteGrid"></div>
+          </div>
+        </div>
+
+        <!-- 步骤 〇伍 -->
+        <div class="step-card" data-step="5">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇伍</span>
+              <span class="step-name">像素变换</span>
+            </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <span class="param-label">像素块大小</span>
+            </div>
+            <div class="mosaic-options">
+              <button class="mosaic-btn" data-size="8" onclick="setMosaic(8, this)">8px</button>
+              <button class="mosaic-btn active" data-size="10" onclick="setMosaic(10, this)">10px</button>
+              <button class="mosaic-btn" data-size="12" onclick="setMosaic(12, this)">12px</button>
+              <button class="mosaic-btn" data-size="18" onclick="setMosaic(18, this)">18px</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- 中央 - 画布 -->
+    <section class="canvas-area">
+      <div class="canvas-toolbar">
+        <div class="toolbar-group">
+          <button class="toolbar-btn primary" onclick="document.getElementById('fileInput').click()">上传图片</button>
+          <button class="toolbar-btn" id="btnReset" onclick="resetImage()">重置</button>
+        </div>
+        <span class="zoom-info" id="zoomInfo">缩放: 100%</span>
+        <div class="toolbar-group">
+          <button class="toolbar-btn" onclick="zoomIn()">放大</button>
+          <button class="toolbar-btn" onclick="zoomOut()">缩小</button>
+          <button class="toolbar-btn" onclick="zoomFit()">适应窗口</button>
+          <button class="toolbar-btn" onclick="zoomReset()">原始尺寸</button>
+        </div>
+      </div>
+
+      <div class="canvas-viewport" id="canvasViewport">
+        <div class="corner-decor tl"></div>
+        <div class="corner-decor tr"></div>
+        <div class="corner-decor bl"></div>
+        <div class="corner-decor br"></div>
+
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon"></div>
+          <div class="upload-text">点击或拖拽上传图片</div>
+          <div class="upload-hint">支持 JPG / PNG / WEBP 格式</div>
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+          <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="mainCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-status">
+        <span id="imgInfo">未加载图片</span>
+        <span id="processStatus">等待操作</span>
+      </div>
+
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" onchange="handleFileUpload(event)">
+    </section>
+
+  </main>
+
+  <!-- 底部操作栏 -->
+  <footer class="footer">
+    <a class="footer-link" href="https://liuzhou.huijiwiki.com/wiki/%E9%A6%96%E9%A1%B5" target="_blank" rel="noopener noreferrer">六州·燕丹特区 视觉风味图片染色器</a>
+    <div class="footer-actions">
+      <button class="btn btn-primary" onclick="downloadResult()">导出结果</button>
+      <input type="text" id="exportName" class="export-input" placeholder="自定义导出名称...">
+    </div>
+  </footer>
+
+<script>
+  /* ═══ 全局状态 ═══ */
+  const state = {
+    originalImage: null,
+    fileName: '',
+    palette: ['#1a1c2c','#333c57','#a7f070','#ffcd75','#a7f070','#38b764','#257179','#b13e53','#5d275d'],
+    mosaicSize: 10,
+    zoom: 1,
+    zoomMin: 0.1,
+    zoomMax: 5
+  };
+
+  /* ═══ 初始化色板 ═══ */
+  function initPalette() {
+    const grid = document.getElementById('paletteGrid');
+    grid.innerHTML = '';
+    state.palette.forEach((color, i) => {
+      const swatch = document.createElement('div');
+      swatch.className = 'palette-swatch';
+      swatch.style.background = color;
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = color;
+      input.addEventListener('input', function() {
+        state.palette[i] = this.value;
+        swatch.style.background = this.value;
+        scheduleProcess();
+      });
+      swatch.appendChild(input);
+      grid.appendChild(swatch);
+    });
+  }
+  initPalette();
+
+  /* ═══ 马赛克选择 ═══ */
+  function setMosaic(size, btn) {
+    state.mosaicSize = size;
+    document.querySelectorAll('.mosaic-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    scheduleProcess();
+  }
+
+  /* ═══ 步骤卡片展开/折叠 ═══ */
+  function toggleExpand(card) {
+    card.classList.toggle('expanded');
+  }
+
+  /* ═══ 步骤开关 ═══ */
+  function toggleStep(e, el) {
+    e.stopPropagation();
+    el.classList.toggle('on');
+    scheduleProcess();
+  }
+
+  /* ═══ 文件上传 ═══ */
+  function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    state.fileName = file.name;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const img = new Image();
+      img.onload = function() {
+        state.originalImage = img;
+        showPreview(img);
+        document.getElementById('imgInfo').textContent =
+          `${file.name}  |  ${img.width} × ${img.height}  |  ${(file.size / 1024).toFixed(1)} KB`;
+        document.getElementById('processStatus').textContent = '已加载';
+        zoomFit();
+        scheduleProcess();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showPreview(img) {
+    const uploadZone = document.getElementById('uploadZone');
+    const previewContainer = document.getElementById('previewContainer');
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    uploadZone.style.display = 'none';
+    previewContainer.style.display = 'flex';
+  }
+
+  /* ═══ 缩放功能 ═══ */
+  function updateZoomDisplay() {
+    document.getElementById('zoomInfo').textContent = `缩放: ${Math.round(state.zoom * 100)}%`;
+    const canvas = document.getElementById('mainCanvas');
+    const wrapper = document.getElementById('canvasWrapper');
+    if (!state.originalImage) return;
+    wrapper.style.transform = `scale(${state.zoom})`;
+    wrapper.style.width = canvas.width * state.zoom + 'px';
+    wrapper.style.height = canvas.height * state.zoom + 'px';
+  }
+
+  function zoomIn() {
+    if (!state.originalImage) return;
+    state.zoom = Math.min(state.zoomMax, state.zoom * 1.25);
+    updateZoomDisplay();
+  }
+
+  function zoomOut() {
+    if (!state.originalImage) return;
+    state.zoom = Math.max(state.zoomMin, state.zoom / 1.25);
+    updateZoomDisplay();
+  }
+
+  function zoomReset() {
+    if (!state.originalImage) return;
+    state.zoom = 1;
+    updateZoomDisplay();
+  }
+
+  function zoomFit() {
+    if (!state.originalImage) return;
+    const viewport = document.getElementById('canvasViewport');
+    const vw = viewport.clientWidth * 0.9;
+    const vh = viewport.clientHeight * 0.9;
+    const iw = state.originalImage.width;
+    const ih = state.originalImage.height;
+    state.zoom = Math.min(vw / iw, vh / ih, 1);
+    updateZoomDisplay();
+  }
+
+  // 鼠标滚轮缩放
+  document.getElementById('canvasViewport').addEventListener('wheel', function(e) {
+    if (!state.originalImage) return;
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      state.zoom = Math.min(state.zoomMax, state.zoom * 1.1);
+    } else {
+      state.zoom = Math.max(state.zoomMin, state.zoom / 1.1);
+    }
+    updateZoomDisplay();
+  }, { passive: false });
+
+  /* ═══ 重置 ═══ */
+  function resetImage() {
+    state.originalImage = null;
+    state.fileName = '';
+    state.zoom = 1;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadZone').style.display = 'flex';
+    document.getElementById('previewContainer').style.display = 'none';
+    document.getElementById('imgInfo').textContent = '未加载图片';
+    document.getElementById('processStatus').textContent = '等待操作';
+    updateZoomDisplay();
+  }
+
+  /* ═══ 拖拽上传 ═══ */
+  const viewport = document.querySelector('.canvas-viewport');
+  viewport.addEventListener('dragover', e => {
+    e.preventDefault();
+    document.getElementById('uploadZone').style.borderColor = 'var(--neon)';
+  });
+  viewport.addEventListener('dragleave', () => {
+    document.getElementById('uploadZone').style.borderColor = '';
+  });
+  viewport.addEventListener('drop', e => {
+    e.preventDefault();
+    document.getElementById('uploadZone').style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      document.getElementById('fileInput').files = dt.files;
+      handleFileUpload({ target: { files: [file] } });
+    }
+  });
+
+  /* ═══════════════════════════════════════
+     图像处理核心算法
+     ═══════════════════════════════════════ */
+
+  function isStepEnabled(stepNum) {
+    const card = document.querySelector(`.step-card[data-step="${stepNum}"]`);
+    if (!card) return false;
+    const toggle = card.querySelector('.step-toggle');
+    return toggle && toggle.classList.contains('on');
+  }
+
+  /* ── 步骤1: 桶型畸变（已同步放大以消除边缘黑边） ── */
+  function applyBarrelDistortion(srcCanvas, strength) {
+    const w = srcCanvas.width, h = srcCanvas.height;
+    const srcCtx = srcCanvas.getContext('2d');
+    const srcData = srcCtx.getImageData(0, 0, w, h);
+    const dst = srcCtx.createImageData(w, h);
+    const cx = w / 2, cy = h / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy);
+    const k = strength / 100;
+
+    // 同步放大：因为畸变操作会使图像向内收缩导致四周产生黑边
+    // 最远点（四个角处）r最大值为1，畸变后长度为 1*(1+k*1) = 1+k
+    // 所以将采样坐标除以 (1+k) 进行同步放大，就能刚好填满画面并去掉所有黑边
+    const scale = 1 + k;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = (x - cx) / maxR;
+        const dy = (y - cy) / maxR;
+        const r = Math.sqrt(dx * dx + dy * dy);
+
+        // 根据缩放系数缩小原图的采样半径，实现放大填满画面的效果
+        const rDistorted = r * (1 + k * r * r);
+        const rZoomed = rDistorted / scale;
+
+        const srcX = cx + rZoomed * maxR * (dx / (r || 1));
+        const srcY = cy + rZoomed * maxR * (dy / (r || 1));
+
+        const ix = Math.round(srcX), iy = Math.round(srcY);
+        const dstIdx = (y * w + x) * 4;
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+          const srcIdx = (iy * w + ix) * 4;
+          dst.data[dstIdx]     = srcData.data[srcIdx];
+          dst.data[dstIdx + 1] = srcData.data[srcIdx + 1];
+          dst.data[dstIdx + 2] = srcData.data[srcIdx + 2];
+          dst.data[dstIdx + 3] = srcData.data[srcIdx + 3];
+        } else {
+          dst.data[dstIdx + 3] = 255;
+        }
+      }
+    }
+    srcCtx.putImageData(dst, 0, 0);
+  }
+
+  /* ── 步骤1: 暗角 ── */
+  function applyVignette(canvas, strength) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    const radius = Math.sqrt(cx * cx + cy * cy);
+    const innerR = radius * (1 - strength / 100);
+
+    const gradient = ctx.createRadialGradient(cx, cy, innerR, cx, cy, radius);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, `rgba(0,0,0,${0.3 + strength / 100 * 0.6})`);
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  /* ── 步骤2: 阈值处理（色阶分离） ── */
+  function applyThresholdPosterize(canvas, levels) {
+    if (levels <= 1) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const step = 255 / (levels - 1);
+
+    for (let i = 0; i < data.length; i += 4) {
+      data[i]     = Math.round(data[i] / step) * step;
+      data[i + 1] = Math.round(data[i + 1] / step) * step;
+      data[i + 2] = Math.round(data[i + 2] / step) * step;
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /* ── 步骤3: 对比度调整 ── */
+  function applyContrast(canvas, contrastValue) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    // 0代表原图默认对比度 (factor=1)，100代表最大对比度。应用标准对比度映射算法：
+    const c = contrastValue * 2.55;
+    const factor = (259 * (c + 255)) / (255 * (259 - c));
+
+    for (let i = 0; i < data.length; i += 4) {
+      data[i]     = (data[i] - 128) * factor + 128;
+      data[i + 1] = (data[i + 1] - 128) * factor + 128;
+      data[i + 2] = (data[i + 2] - 128) * factor + 128;
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /* ── 步骤4: 颜色强制索引（带杂色仿色） ── */
+  function hexToRgb(hex) {
+    const v = parseInt(hex.replace('#', ''), 16);
+    return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+  }
+
+  function colorDistance(r1, g1, b1, r2, g2, b2) {
+    const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+    return dr * dr + dg * dg + db * db;
+  }
+
+  function findClosestColor(r, g, b, paletteRgb) {
+    let minDist = Infinity, best = 0;
+    for (let i = 0; i < paletteRgb.length; i++) {
+      const d = colorDistance(r, g, b, paletteRgb[i][0], paletteRgb[i][1], paletteRgb[i][2]);
+      if (d < minDist) { minDist = d; best = i; }
+    }
+    return paletteRgb[best];
+  }
+
+  function applyColorIndex(canvas, palette) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const paletteRgb = palette.map(hexToRgb);
+
+    for (let i = 0; i < data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 50;
+      const r = Math.min(255, Math.max(0, data[i] + noise));
+      const g = Math.min(255, Math.max(0, data[i + 1] + noise));
+      const b = Math.min(255, Math.max(0, data[i + 2] + noise));
+      const c = findClosestColor(r, g, b, paletteRgb);
+      data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2];
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /* ── 步骤5: 马赛克 ── */
+  function applyMosaic(canvas, blockSize) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    for (let by = 0; by < h; by += blockSize) {
+      for (let bx = 0; bx < w; bx += blockSize) {
+        let rSum = 0, gSum = 0, bSum = 0, count = 0;
+        const bw = Math.min(blockSize, w - bx);
+        const bh = Math.min(blockSize, h - by);
+
+        for (let y = by; y < by + bh; y++) {
+          for (let x = bx; x < bx + bw; x++) {
+            const idx = (y * w + x) * 4;
+            rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2];
+            count++;
+          }
+        }
+        const rAvg = Math.round(rSum / count);
+        const gAvg = Math.round(gSum / count);
+        const bAvg = Math.round(bSum / count);
+
+        for (let y = by; y < by + bh; y++) {
+          for (let x = bx; x < bx + bw; x++) {
+            const idx = (y * w + x) * 4;
+            data[idx] = rAvg; data[idx + 1] = gAvg; data[idx + 2] = bAvg;
+          }
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  /* ═══ 防抖调度实时处理 ═══ */
+  let _processTimer = null;
+  function scheduleProcess() {
+    if (_processTimer) clearTimeout(_processTimer);
+    _processTimer = setTimeout(() => { processImage(); }, 80);
+  }
+
+  /* ═══ 主处理流程 ═══ */
+  function processImage() {
+    if (!state.originalImage) return;
+    document.getElementById('processStatus').textContent = '处理中...';
+
+    setTimeout(() => {
+      const canvas = document.getElementById('mainCanvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = state.originalImage.width;
+      canvas.height = state.originalImage.height;
+      ctx.drawImage(state.originalImage, 0, 0);
+
+      if (isStepEnabled(1)) {
+        const distort = parseInt(document.getElementById('distortSlider').value);
+        const vignette = parseInt(document.getElementById('vignetteSlider').value);
+        if (distort > 0) applyBarrelDistortion(canvas, distort);
+        if (vignette > 0) applyVignette(canvas, vignette);
+      }
+
+      if (isStepEnabled(2)) {
+        const contrast = parseInt(document.getElementById('contrastSlider').value);
+        if (contrast !== 0) {
+          applyContrast(canvas, contrast);
+        }
+      }
+
+      if (isStepEnabled(3)) {
+        applyThresholdPosterize(canvas, 14);
+      }
+
+      if (isStepEnabled(4)) {
+        applyColorIndex(canvas, state.palette);
+      }
+
+      if (isStepEnabled(5)) {
+        applyMosaic(canvas, state.mosaicSize);
+      }
+
+      document.getElementById('processStatus').textContent = '实时预览';
+    }, 10);
+  }
+
+  function downloadResult() {
+    const canvas = document.getElementById('mainCanvas');
+    if (!state.originalImage) return;
+
+    // 获取自定义名称，若空则使用原逻辑
+    let customName = document.getElementById('exportName').value.trim();
+    if (!customName) {
+      customName = '帧影版_' + (state.fileName ? state.fileName.replace(/\.[^/.]+$/, "") : '输出');
+    }
+
+    const link = document.createElement('a');
+    link.download = customName + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+</script>
+
+</body>
+</html>
