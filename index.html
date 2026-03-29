@@ -832,7 +832,14 @@
 
     <!-- 左侧 - 处理步骤 + 内联参数 -->
     <aside class="panel-left">
-      <div class="panel-title">处理流程</div>
+      <div class="panel-title">处理流程
+        <button class="toolbar-btn" onclick="randomizeAll()" style="margin-left:auto; display:flex; align-items:center; gap:4px; font-size:0.65rem; padding:3px 8px; height:auto; letter-spacing:1px; border-color:var(--border);" title="随机重置所有参数数值">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 12px; height: 12px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          数值随机
+        </button>
+      </div>
       <div class="steps-container" id="stepsContainer">
 
         <!-- 步骤 〇壹 -->
@@ -1042,6 +1049,15 @@
           </div>
         </div>
 
+        <!-- 配置管理 -->
+        <div style="margin-top: 12px; padding: 0 4px; flex-shrink: 0;">
+          <div style="display: flex; gap: 8px;">
+            <button class="mosaic-btn" style="flex: 1; padding: 10px 0; background: rgba(57,255,20,0.05);" onclick="exportConfig()" title="将当前参数配置保存为 JSON 文件">导出配置</button>
+            <button class="mosaic-btn" style="flex: 1; padding: 10px 0; background: rgba(57,255,20,0.05);" onclick="document.getElementById('configInput').click()" title="读取本地 JSON 配置">导入配置</button>
+          </div>
+          <div id="configStatus" style="font-size: 0.65rem; color: var(--text-dim); text-align: center; margin-top: 8px; letter-spacing: 1px;">当前加载配置：默认</div>
+        </div>
+
       </div>
     </aside>
 
@@ -1086,6 +1102,7 @@
       </div>
 
       <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" onchange="handleFileUpload(event)">
+      <input type="file" id="configInput" accept=".json" style="display: none;" onchange="importConfig(event)">
     </section>
 
   </main>
@@ -1565,6 +1582,156 @@
   function syncParam(targetId, val) {
     const el = document.getElementById(targetId);
     if (el) el.value = val;
+  }
+
+  /* ═══ 配置状态追踪 ═══ */
+  state.configName = '默认';
+  function setConfigName(name) {
+    if (state.configName !== name) {
+      state.configName = name;
+      const el = document.getElementById('configStatus');
+      if (el) el.textContent = `当前加载配置：${state.configName}`;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('stepsContainer');
+    if(container) {
+      container.addEventListener('input', (e) => {
+        if (['range', 'number', 'color'].includes(e.target.type)) setConfigName('自定义');
+      });
+      container.addEventListener('click', (e) => {
+        if (e.target.classList.contains('step-toggle')) setConfigName('自定义');
+        if (e.target.textContent === '随机刷新') setConfigName('自定义');
+      });
+    }
+  });
+
+  /* ═══ 导出与导入配置 ═══ */
+  function exportConfig() {
+    const config = {
+      distort: document.getElementById('distortSlider').value,
+      vignette: document.getElementById('vignetteSlider').value,
+      contrast: document.getElementById('contrastSlider').value,
+      highlights: document.getElementById('highlightsSlider').value,
+      midtones: document.getElementById('midtonesSlider').value,
+      shadows: document.getElementById('shadowsSlider').value,
+      blacks: document.getElementById('blacksSlider').value,
+      mosaic: document.getElementById('mosaicSlider').value,
+      glitch: document.getElementById('glitchSlider').value,
+      scanline: document.getElementById('scanlineSlider').value,
+
+      step1Enabled: document.querySelector('.step-card[data-step="1"] .step-toggle').classList.contains('on'),
+      step2Enabled: document.querySelector('.step-card[data-step="2"] .step-toggle').classList.contains('on'),
+      step3Enabled: document.querySelector('.step-card[data-step="3"] .step-toggle').classList.contains('on'),
+      step4Enabled: document.querySelector('.step-card[data-step="4"] .step-toggle').classList.contains('on'),
+      step5Enabled: document.querySelector('.step-card[data-step="5"] .step-toggle').classList.contains('on'),
+      step7Enabled: document.querySelector('.step-card[data-step="7"] .step-toggle').classList.contains('on'),
+
+      rgbSplit: document.getElementById('rgbSplitToggle').classList.contains('on'),
+      glitchEnabled: document.getElementById('glitchToggle').classList.contains('on'),
+      palette: state.palette
+    };
+
+    let defaultName = state.fileName ? `帧影板配置_${state.fileName.replace(/\.[^/.]+$/, "")}` : '帧影板配置';
+    let givenName = prompt("请输入要保存的配置名称：", defaultName);
+    if (givenName === null) return;
+    if (givenName.trim() === '') givenName = defaultName;
+
+    const blob = new Blob([JSON.stringify(config, null, 2)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const A = document.createElement('a');
+    A.href = url;
+    A.download = `${givenName.trim()}.json`;
+    document.body.appendChild(A);
+    A.click();
+    document.body.removeChild(A);
+    URL.revokeObjectURL(url);
+  }
+
+  function importConfig(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const config = JSON.parse(ev.target.result);
+
+        const setVal = (id, val) => {
+          if (val !== undefined && document.getElementById(id)) {
+            syncParam(id, val);
+            syncParam(id.replace('Slider', 'Val'), val);
+          }
+        };
+
+        setVal('distortSlider', config.distort);
+        setVal('vignetteSlider', config.vignette);
+        setVal('contrastSlider', config.contrast);
+        setVal('highlightsSlider', config.highlights);
+        setVal('midtonesSlider', config.midtones);
+        setVal('shadowsSlider', config.shadows);
+        setVal('blacksSlider', config.blacks);
+        setVal('mosaicSlider', config.mosaic);
+        setVal('glitchSlider', config.glitch);
+        setVal('scanlineSlider', config.scanline);
+
+        const setToggle = (selector, val) => {
+          const el = document.querySelector(selector);
+          if (el && val !== undefined) {
+            if (val) el.classList.add('on');
+            else el.classList.remove('on');
+          }
+        };
+
+        setToggle('.step-card[data-step="1"] .step-toggle', config.step1Enabled);
+        setToggle('.step-card[data-step="2"] .step-toggle', config.step2Enabled);
+        setToggle('.step-card[data-step="3"] .step-toggle', config.step3Enabled);
+        setToggle('.step-card[data-step="4"] .step-toggle', config.step4Enabled);
+        setToggle('.step-card[data-step="5"] .step-toggle', config.step5Enabled);
+        setToggle('.step-card[data-step="7"] .step-toggle', config.step7Enabled);
+
+        setToggle('#rgbSplitToggle', config.rgbSplit);
+        setToggle('#glitchToggle', config.glitchEnabled);
+
+        if (config.palette && Array.isArray(config.palette)) {
+          state.palette = config.palette;
+          initPalette();
+        }
+
+        setConfigName(file.name.replace(/\.[^/.]+$/, ""));
+        scheduleProcess();
+      } catch (err) {
+        alert("配置文件读取失败，请检查文件格式是否正确！\n" + err.message);
+      }
+      e.target.value = ''; // 允许重复导入同一文件
+    };
+    reader.readAsText(file);
+  }
+
+  /* ═══ 随机 ROLL 所有数值 ═══ */
+  function randomizeAll() {
+    const params = [
+      { slider: 'distortSlider', input: 'distortVal', min: 0, max: 100 },
+      { slider: 'vignetteSlider', input: 'vignetteVal', min: 0, max: 100 },
+      { slider: 'contrastSlider', input: 'contrastVal', min: 0, max: 20 },
+      { slider: 'highlightsSlider', input: 'highlightsVal', min: -100, max: 100 },
+      { slider: 'midtonesSlider', input: 'midtonesVal', min: -100, max: 100 },
+      { slider: 'shadowsSlider', input: 'shadowsVal', min: -100, max: 100 },
+      { slider: 'blacksSlider', input: 'blacksVal', min: -100, max: 100 },
+      { slider: 'mosaicSlider', input: 'mosaicVal', min: 2, max: 24 },
+      { slider: 'glitchSlider', input: 'glitchVal', min: 1, max: 100 },
+      { slider: 'scanlineSlider', input: 'scanlineVal', min: 0, max: 10 }
+    ];
+
+    params.forEach(p => {
+      const randomVal = Math.floor(Math.random() * (p.max - p.min + 1)) + p.min;
+      const sliderEl = document.getElementById(p.slider);
+      if (sliderEl) sliderEl.value = randomVal;
+      syncParam(p.input, randomVal);
+    });
+
+    setConfigName('自定义');
+    scheduleProcess();
   }
 
   /* ═══ 防抖调度实时处理 ═══ */
