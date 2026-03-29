@@ -35,10 +35,11 @@
     font-weight: normal;
     background: var(--bg-deep);
     color: var(--text);
-    min-height: 100vh;
+    height: 100vh;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
   /* ═══ 扫描线 + 噪点背景 ═══ */
@@ -160,7 +161,7 @@
     flex: 1;
     display: grid;
     grid-template-columns: 320px 1fr;
-    grid-template-rows: 1fr;
+    grid-template-rows: minmax(0, 1fr);
     gap: 0;
     padding: 0;
     min-height: 0;
@@ -173,6 +174,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
 
   .panel-title {
@@ -180,7 +182,8 @@
     font-weight: 700;
     color: var(--neon);
     letter-spacing: 3px;
-    padding: 16px 20px;
+    height: 48px;
+    padding: 0 20px;
     border-bottom: 1px solid var(--border);
     text-transform: uppercase;
     display: flex;
@@ -217,6 +220,7 @@
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
   }
 
   .step-card::before {
@@ -368,6 +372,45 @@
     text-align: right;
   }
 
+  .param-input-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .param-num-input {
+    background: transparent;
+    border: none;
+    color: var(--neon);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font-main);
+    text-align: right;
+    width: 38px;
+    padding: 0;
+    outline: none;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  .param-num-input:hover, .param-num-input:focus {
+    border-bottom-color: var(--neon-dim);
+  }
+
+  .param-num-input::-webkit-outer-spin-button,
+  .param-num-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .param-unit {
+    font-size: 0.75rem;
+    color: var(--neon);
+    font-weight: 600;
+    margin-left: 2px;
+  }
+
   .param-slider {
     width: 100%;
     margin-top: 6px;
@@ -405,13 +448,15 @@
     flex-direction: column;
     background: var(--bg-deep);
     position: relative;
+    min-height: 0;
   }
 
   .canvas-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 20px;
+    height: 48px;
+    padding: 0 20px;
     border-bottom: 1px solid var(--border);
     background: var(--bg-panel);
   }
@@ -540,7 +585,7 @@
     display: none;
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 10000;
     overflow: auto;
     align-items: center;
     justify-content: center;
@@ -791,7 +836,7 @@
       <div class="steps-container" id="stepsContainer">
 
         <!-- 步骤 〇壹 -->
-        <div class="step-card expanded" data-step="1">
+        <div class="step-card" data-step="1">
           <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
             <div class="step-left">
               <span class="step-num">步骤 〇壹</span>
@@ -805,16 +850,22 @@
           <div class="step-params-inline">
             <div class="param-row">
               <span class="param-label">桶型畸变</span>
-              <span class="param-value" id="distortVal">40%</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="distortVal" value="40" min="0" max="100" oninput="syncParam('distortSlider', this.value); scheduleProcess()">
+                <span class="param-unit">%</span>
+              </div>
             </div>
             <input type="range" class="param-slider" id="distortSlider" min="0" max="100" value="40"
-              oninput="document.getElementById('distortVal').textContent = this.value + '%'; scheduleProcess()">
+              oninput="syncParam('distortVal', this.value); scheduleProcess()">
             <div class="param-row" style="margin-top: 12px;">
               <span class="param-label">暗角强度</span>
-              <span class="param-value" id="vignetteVal">40%</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="vignetteVal" value="40" min="0" max="100" oninput="syncParam('vignetteSlider', this.value); scheduleProcess()">
+                <span class="param-unit">%</span>
+              </div>
             </div>
             <input type="range" class="param-slider" id="vignetteSlider" min="0" max="100" value="40"
-              oninput="document.getElementById('vignetteVal').textContent = this.value + '%'; scheduleProcess()">
+              oninput="syncParam('vignetteVal', this.value); scheduleProcess()">
           </div>
         </div>
 
@@ -833,10 +884,49 @@
           <div class="step-params-inline">
             <div class="param-row">
               <span class="param-label">对比度</span>
-              <span class="param-value" id="contrastVal">5%</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="contrastVal" value="5" min="0" max="20" oninput="syncParam('contrastSlider', this.value); scheduleProcess()">
+                <span class="param-unit">%</span>
+              </div>
             </div>
             <input type="range" class="param-slider" id="contrastSlider" min="0" max="20" value="5"
-              oninput="document.getElementById('contrastVal').textContent = this.value + '%'; scheduleProcess()">
+              oninput="syncParam('contrastVal', this.value); scheduleProcess()">
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">高光</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="highlightsVal" value="0" min="-100" max="100" oninput="syncParam('highlightsSlider', this.value); scheduleProcess()">
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="highlightsSlider" min="-100" max="100" value="0"
+              oninput="syncParam('highlightsVal', this.value); scheduleProcess()">
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">灰度</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="midtonesVal" value="0" min="-100" max="100" oninput="syncParam('midtonesSlider', this.value); scheduleProcess()">
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="midtonesSlider" min="-100" max="100" value="0"
+              oninput="syncParam('midtonesVal', this.value); scheduleProcess()">
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">阴影</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="shadowsVal" value="0" min="-100" max="100" oninput="syncParam('shadowsSlider', this.value); scheduleProcess()">
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="shadowsSlider" min="-100" max="100" value="0"
+              oninput="syncParam('shadowsVal', this.value); scheduleProcess()">
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">黑色</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="blacksVal" value="0" min="-100" max="100" oninput="syncParam('blacksSlider', this.value); scheduleProcess()">
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="blacksSlider" min="-100" max="100" value="0"
+              oninput="syncParam('blacksVal', this.value); scheduleProcess()">
           </div>
         </div>
 
@@ -895,13 +985,60 @@
           <div class="step-params-inline">
             <div class="param-row">
               <span class="param-label">像素块大小</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="mosaicVal" value="10" min="2" max="24" oninput="syncParam('mosaicSlider', this.value); scheduleProcess()">
+                <span class="param-unit">px</span>
+              </div>
             </div>
-            <div class="mosaic-options">
-              <button class="mosaic-btn" data-size="8" onclick="setMosaic(8, this)">8px</button>
-              <button class="mosaic-btn active" data-size="10" onclick="setMosaic(10, this)">10px</button>
-              <button class="mosaic-btn" data-size="12" onclick="setMosaic(12, this)">12px</button>
-              <button class="mosaic-btn" data-size="18" onclick="setMosaic(18, this)">18px</button>
+            <input type="range" class="param-slider" id="mosaicSlider" min="2" max="24" value="10"
+              oninput="syncParam('mosaicVal', this.value); scheduleProcess()">
+          </div>
+        </div>
+
+        <!-- 步骤 〇柒 -->
+        <div class="step-card" data-step="7">
+          <div class="step-card-header" onclick="toggleExpand(this.parentElement)">
+            <div class="step-left">
+              <span class="step-num">步骤 〇柒</span>
+              <span class="step-name">视觉效果</span>
             </div>
+            <div class="step-right">
+              <div class="step-toggle on" onclick="toggleStep(event, this)"></div>
+              <div class="step-expand">▼</div>
+            </div>
+          </div>
+          <div class="step-params-inline">
+            <div class="param-row">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="param-label">黑块故障效果</span>
+                <span style="font-size:0.6rem; color:var(--text-dim); border:1px solid var(--border); border-radius:3px; padding:1px 4px; cursor:pointer; transition:all 0.2s;" onclick="rerollGlitch()" onmouseover="this.style.color='var(--neon)';this.style.borderColor='var(--neon)'" onmouseout="this.style.color='var(--text-dim)';this.style.borderColor='var(--border)'" title="随机刷新显示位置">随机刷新</span>
+              </div>
+              <div class="step-toggle" id="glitchToggle" onclick="this.classList.toggle('on'); scheduleProcess()"></div>
+            </div>
+            <div class="param-row" style="margin-top: 6px;">
+              <span class="param-label" style="color:var(--text-dim); font-size:0.7rem;">故障强度</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="glitchVal" value="20" min="1" max="100" oninput="syncParam('glitchSlider', this.value); scheduleProcess()">
+                <span class="param-unit">%</span>
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="glitchSlider" min="1" max="100" value="20"
+              oninput="syncParam('glitchVal', this.value); scheduleProcess()">
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">红蓝失真效果</span>
+              <div class="step-toggle on" id="rgbSplitToggle" onclick="this.classList.toggle('on'); scheduleProcess()"></div>
+            </div>
+
+            <div class="param-row" style="margin-top: 12px;">
+              <span class="param-label">扫描线粗细</span>
+              <div class="param-input-group">
+                <input type="number" class="param-num-input" id="scanlineVal" value="6" min="0" max="10" oninput="syncParam('scanlineSlider', this.value); scheduleProcess()">
+                <span class="param-unit">px</span>
+              </div>
+            </div>
+            <input type="range" class="param-slider" id="scanlineSlider" min="0" max="10" value="6"
+              oninput="syncParam('scanlineVal', this.value); scheduleProcess()">
           </div>
         </div>
 
@@ -971,8 +1108,16 @@
     mosaicSize: 10,
     zoom: 1,
     zoomMin: 0.1,
-    zoomMax: 5
+    zoomMax: 5,
+    glitchRandoms: []
   };
+
+  function rerollGlitch(isInit = false) {
+    state.glitchRandoms = Array.from({length: 4000}, () => Math.random());
+    // 页面初次加载时跳过 scheduleProcess，避免遇到 let 变量的 TDZ(暂时性死区) 导致脚本崩溃
+    if (!isInit && typeof scheduleProcess === 'function') scheduleProcess();
+  }
+  rerollGlitch(true); // 隐式初始化随机数池
 
   /* ═══ 初始化色板 ═══ */
   function initPalette() {
@@ -996,13 +1141,7 @@
   }
   initPalette();
 
-  /* ═══ 马赛克选择 ═══ */
-  function setMosaic(size, btn) {
-    state.mosaicSize = size;
-    document.querySelectorAll('.mosaic-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    scheduleProcess();
-  }
+  /* 原马赛克按钮逻辑已替换为滑动条 */
 
   /* ═══ 步骤卡片展开/折叠 ═══ */
   function toggleExpand(card) {
@@ -1151,7 +1290,7 @@
   }
 
   /* ── 步骤1: 桶型畸变（已同步放大以消除边缘黑边） ── */
-  function applyBarrelDistortion(srcCanvas, strength) {
+  function applyBarrelDistortion(srcCanvas, strength, fillBlack = true) {
     const w = srcCanvas.width, h = srcCanvas.height;
     const srcCtx = srcCanvas.getContext('2d');
     const srcData = srcCtx.getImageData(0, 0, w, h);
@@ -1186,7 +1325,7 @@
           dst.data[dstIdx + 1] = srcData.data[srcIdx + 1];
           dst.data[dstIdx + 2] = srcData.data[srcIdx + 2];
           dst.data[dstIdx + 3] = srcData.data[srcIdx + 3];
-        } else {
+        } else if (fillBlack) {
           dst.data[dstIdx + 3] = 255;
         }
       }
@@ -1227,21 +1366,53 @@
     ctx.putImageData(imgData, 0, 0);
   }
 
-  /* ── 步骤3: 对比度调整 ── */
-  function applyContrast(canvas, contrastValue) {
+  /* ── 步骤2: 曝光滤镜与对比度统一处理 ── */
+  function applyTonesAndContrast(canvas, contrastValue, hVal, mVal, sVal, bVal) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
     const imgData = ctx.getImageData(0, 0, w, h);
     const data = imgData.data;
 
-    // 0代表原图默认对比度 (factor=1)，100代表最大对比度。应用标准对比度映射算法：
+    // 构建256级色调与对比度映射LUT表，极大提高处理速度（避免百万次求峰值计算）
+    const lut = new Uint8Array(256);
+
+    // 转化数值到合适的权重影响力度
+    const b = bVal / 100 * 0.25;
+    const s = sVal / 100 * 0.25;
+    const m = mVal / 100 * 0.3;
+    const hl = hVal / 100 * 0.25;
+
+    // 对比度系数
     const c = contrastValue * 2.55;
     const factor = (259 * (c + 255)) / (255 * (259 - c));
 
+    for (let i = 0; i < 256; i++) {
+      let x = i / 255;
+
+      // 平滑计算每个像素值在四个色调区间的响应权重
+      let wB = Math.max(0, 1 - x * 2.5);                   // 黑色区响应
+      let wS = Math.max(0, 1 - Math.abs(x - 0.25) * 4);    // 阴影区响应
+      let wM = Math.max(0, 1 - Math.abs(x - 0.5) * 2);     // 灰度（中间调）响应
+      let wH = Math.max(0, (x - 0.5) * 2);                 // 高光区响应
+
+      // 应用区域色调偏移
+      let x2 = x + b * wB + s * wS + m * wM + hl * wH;
+      x2 = Math.min(1, Math.max(0, x2));
+      let val = x2 * 255;
+
+      // 叠加原有的对比度公式
+      if (contrastValue !== 0) {
+        val = (val - 128) * factor + 128;
+      }
+
+      lut[i] = Math.min(255, Math.max(0, Math.round(val)));
+    }
+
+    // 采用LUT查表法快速映射全图像素
     for (let i = 0; i < data.length; i += 4) {
-      data[i]     = (data[i] - 128) * factor + 128;
-      data[i + 1] = (data[i + 1] - 128) * factor + 128;
-      data[i + 2] = (data[i + 2] - 128) * factor + 128;
+      data[i]     = lut[data[i]];
+      data[i + 1] = lut[data[i + 1]];
+      data[i + 2] = lut[data[i + 2]];
     }
     ctx.putImageData(imgData, 0, 0);
   }
@@ -1319,6 +1490,83 @@
     ctx.putImageData(imgData, 0, 0);
   }
 
+  /* ── 步骤7: 视觉效果（黑块故障、红蓝失真、扫描线） ── */
+  function applyBlackBlockGlitch(canvas, intensity, blockSize) {
+    if (intensity <= 0 || !state.glitchRandoms) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+
+    // 基于强度与长宽计算理论方块数，但受限于随机池容量
+    const targetCount = Math.floor((intensity / 100) * (h / blockSize) * 1.5);
+    const count = Math.min(targetCount, Math.floor(state.glitchRandoms.length / 4));
+
+    ctx.fillStyle = '#000000';
+    let rIdx = 0;
+    for(let i = 0; i < count; i++) {
+        const by = Math.floor(state.glitchRandoms[rIdx++] * (h / blockSize)) * blockSize;
+        const bx = Math.floor(state.glitchRandoms[rIdx++] * (w / blockSize)) * blockSize;
+        const bw = Math.floor(state.glitchRandoms[rIdx++] * 8 + 2) * blockSize;
+        const bh = Math.floor(state.glitchRandoms[rIdx++] * 2 + 1) * blockSize;
+        ctx.fillRect(bx, by, bw, bh);
+    }
+  }
+
+  function applyRGBSplit(canvas, offset) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const outData = new Uint8ClampedArray(data);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+
+        // 红色通道采样右侧像素（视觉左移），蓝色通道采样左侧像素（视觉右移）
+        const rX = Math.min(w - 1, x + offset);
+        const bX = Math.max(0, x - offset);
+
+        const rIdx = (y * w + rX) * 4;
+        const bIdx = (y * w + bX) * 4;
+
+        outData[idx] = data[rIdx];         // R
+        outData[idx + 2] = data[bIdx + 2]; // B
+      }
+    }
+    data.set(outData);
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  function applyScanlines(canvas, thickness, distortStrength = 0) {
+    if (thickness <= 0) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+
+    if (distortStrength > 0) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.fillStyle = 'rgba(0, 0, 0, 0.35)'; // 半透明黑线
+      for (let y = 0; y < h; y += thickness * 2) {
+        tCtx.fillRect(0, y, w, thickness);
+      }
+      applyBarrelDistortion(tempCanvas, distortStrength, false); // 叠加模式下禁用溢出填黑
+      ctx.drawImage(tempCanvas, 0, 0);
+    } else {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      for (let y = 0; y < h; y += thickness * 2) {
+        ctx.fillRect(0, y, w, thickness);
+      }
+    }
+  }
+
+  /* ═══ 双向绑定同步 ═══ */
+  function syncParam(targetId, val) {
+    const el = document.getElementById(targetId);
+    if (el) el.value = val;
+  }
+
   /* ═══ 防抖调度实时处理 ═══ */
   let _processTimer = null;
   function scheduleProcess() {
@@ -1348,8 +1596,13 @@
 
       if (isStepEnabled(2)) {
         const contrast = parseInt(document.getElementById('contrastSlider').value);
-        if (contrast !== 0) {
-          applyContrast(canvas, contrast);
+        const highlights = parseInt(document.getElementById('highlightsSlider').value);
+        const midtones = parseInt(document.getElementById('midtonesSlider').value);
+        const shadows = parseInt(document.getElementById('shadowsSlider').value);
+        const blacks = parseInt(document.getElementById('blacksSlider').value);
+
+        if (contrast !== 0 || highlights !== 0 || midtones !== 0 || shadows !== 0 || blacks !== 0) {
+          applyTonesAndContrast(canvas, contrast, highlights, midtones, shadows, blacks);
         }
       }
 
@@ -1362,7 +1615,25 @@
       }
 
       if (isStepEnabled(5)) {
-        applyMosaic(canvas, state.mosaicSize);
+        const msSize = parseInt(document.getElementById('mosaicSlider').value);
+        applyMosaic(canvas, msSize);
+      }
+
+      if (isStepEnabled(7)) {
+        const msSize = isStepEnabled(5) ? parseInt(document.getElementById('mosaicSlider').value) : 4;
+        const glitchEnabled = document.getElementById('glitchToggle').classList.contains('on');
+        const glitchIntensity = parseInt(document.getElementById('glitchSlider').value);
+        const rgbSplit = document.getElementById('rgbSplitToggle').classList.contains('on');
+        const scanline = parseInt(document.getElementById('scanlineSlider').value);
+
+        if (glitchEnabled && glitchIntensity > 0) applyBlackBlockGlitch(canvas, glitchIntensity, msSize);
+        if (rgbSplit) applyRGBSplit(canvas, Math.max(2, Math.floor(msSize * 0.8)));
+
+        let distortStrength = 0;
+        if (isStepEnabled(1)) {
+          distortStrength = parseInt(document.getElementById('distortSlider').value);
+        }
+        if (scanline > 0) applyScanlines(canvas, scanline, distortStrength);
       }
 
       document.getElementById('processStatus').textContent = '实时预览';
